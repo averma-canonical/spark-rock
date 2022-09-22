@@ -1,0 +1,75 @@
+name: spark
+summary: Spark ROCK
+description: Spark ROCK
+license: Apache-2.0
+
+version: "0.1"
+base: ubuntu:20.04
+
+entrypoint: ["/opt/entrypoint"]
+
+parts:
+  spark:
+    plugin: dump
+    source: https://downloads.apache.org/spark/spark-3.3.0/spark-3.3.0-bin-hadoop3.tgz
+    source-checksum: 1e8234d0c1d2ab4462d6b0dfe5b54f2851dcd883378e0ed756140e10adfb5be4123961b521140f580e364c239872ea5a9f813a20b73c69cb6d4e95da2575c29c
+    overlay-script: |
+      set -ex
+      sed -i 's/http:\/\/deb.\(.*\)/https:\/\/deb.\1/g' /etc/apt/sources.list
+      apt-get update
+      ln -s /lib /lib64
+      apt install -y bash tini libc6 libpam-modules krb5-user libnss3 procps
+      mkdir -p /opt/spark
+      mkdir -p /opt/spark/examples
+      mkdir -p /opt/spark/work-dir
+      touch /opt/spark/RELEASE
+      rm /bin/sh
+      ln -sv /bin/bash /bin/sh
+      echo "auth required pam_wheel.so use_uid" >> /etc/pam.d/su
+      chgrp root /etc/passwd && chmod ug+rw /etc/passwd
+      rm -rf /var/cache/apt/*
+
+    organize:
+      jars: opt/spark/jars
+      bin: opt/spark/bin
+      sbin: opt/spark/sbin
+      kubernetes/dockerfiles/spark/entrypoint.sh: opt/entrypoint.sh
+      kubernetes/dockerfiles/spark/decom.sh: opt/decom.sh
+      examples: opt/spark/examples
+      kubernetes/tests: opt/spark/tests
+      data: opt/spark/data
+    stage:
+       - opt/spark/jars
+       - opt/spark/bin
+       - opt/spark/sbin
+       - opt/entrypoint.sh
+       - opt/decom.sh
+       - opt/spark/examples
+       - opt/spark/tests
+       - opt/spark/data
+
+  config:
+    plugin: dump
+    after: [spark]
+    source: files    
+    organize:
+      spark.yaml: etc/spark/spark.yaml
+      001-default.yaml: var/lib/pebble/default/layers/001-default.yaml
+    stage:
+      - etc/spark/spark.yaml
+      - var/lib/pebble/default/layers/001-default.yaml
+    override-prime: |
+      craftctl default
+      chown -R 1000:1000 etc/spark
+
+  user-setup:
+    plugin: nil
+    after: [config]
+    overlay-script: |
+      SPARK_HOME=/opt/spark
+      chmod g+w /opt/spark/work-dir
+      chmod a+x /opt/decom.sh
+
+      # Create a user in the $CRAFT_OVERLAY chroot
+      SPARK_UID=185
+      useradd -R $CRAFT_OVERLAY -M -r -u 1000 -U ${SPARK_UID}
