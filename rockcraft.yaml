@@ -19,8 +19,8 @@ parts:
 
   spark:
     plugin: dump
-    source: https://downloads.apache.org/spark/spark-3.3.0/spark-3.3.0-bin-hadoop3.tgz
-    source-checksum: sha512/1e8234d0c1d2ab4462d6b0dfe5b54f2851dcd883378e0ed756140e10adfb5be4123961b521140f580e364c239872ea5a9f813a20b73c69cb6d4e95da2575c29c
+    source: https://downloads.apache.org/spark/spark-3.3.1/spark-3.3.1-bin-hadoop3.tgz
+    source-checksum: sha512/769db39a560a95fd88b58ed3e9e7d1e92fb68ee406689fb4d30c033cb5911e05c1942dcc70e5ec4585df84e80aabbc272b9386a208debda89522efff1335c8ff
     overlay-script: |
       set -ex
       sed -i 's/http:\/\/deb.\(.*\)/https:\/\/deb.\1/g' /etc/apt/sources.list
@@ -36,6 +36,7 @@ parts:
       # chgrp root /etc/passwd && chmod ug+rw /etc/passwd
       rm -rf /var/cache/apt/*
     organize:
+      conf: opt/spark/conf
       jars: opt/spark/jars
       bin: opt/spark/bin
       sbin: opt/spark/sbin
@@ -46,6 +47,7 @@ parts:
       kubernetes/tests: opt/spark/tests
       data: opt/spark/data
     stage:
+       - opt/spark/conf
        - opt/spark/jars
        - opt/spark/bin
        - opt/spark/sbin
